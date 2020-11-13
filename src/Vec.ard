@@ -1,0 +1,178 @@
+\import Arith.Nat
+\import Data.Bool
+\import Data.List
+\import Order.Lattice
+\import Paths
+\import Set.Fin
+\open Nat
+
+\func length {A : \Type} (xs : List A) : Nat
+  | List.nil => zero
+  | List.:: _ xs => suc (length xs)
+
+\data Vec (n : Nat) (A : \Type) \elim n
+  | zero => nil
+  | suc n => \infixr 5 :: A (Vec n A)
+  \where {
+    \use \coerce toList {n : Nat} {A : \Type} (xs : Vec n A) : List A \elim n, xs
+      | zero, nil => List.nil
+      | suc n, :: x xs => x List.:: toList xs
+    \use \coerce fromList {A : \Type} (xs : List A) : Vec (length xs) A
+      | List.nil => nil
+      | List.:: x xs => x :: fromList xs
+    -- Arend: if I name this function `coe` then how do I refer to the global coe in its body?
+    \func coe-length {n n' : Nat} (p : n = n') {A : \Type} (xs : Vec n A) : Vec n' A =>
+      coe (\lam i => Vec (p @ i) A) xs right
+  }
+
+-- It is slightly annoying that we have to write n + m and not m + n here, caused by the fact that Nat.+ was defined by
+-- induction on the right operand
+\func \infixr 5 ++ {m n : Nat} {A : \Type} (xs : Vec m A) (ys : Vec n A) : Vec (n + m) A \elim m, xs
+  | zero, nil => ys
+  | suc n, :: x xs => x :: xs ++ ys
+
+\func head {n : Nat} {A : \Type} (xs : Vec (suc n) A) : A \elim xs
+  | :: x _ => x
+
+\func tail {n : Nat} {A : \Type} (xs : Vec (suc n) A) : Vec n A \elim xs
+  | :: _ xs => xs
+
+-- this is the point where I begin to wish Arend has auto-generalization, i.e., declare the whole thing with
+-- \varible {n : Nat} {A : \Type} (xs : Vec n A)
+-- it also matches the common mathematical practice where one declares "Let G be a group" and use G in several
+-- consecutive lemmas without declaring it again.  \section would be a good name for such scopes
+-- alternatively, make this automatic in a block following the type definition (works like instance methods
+-- in OOP languages)
+
+\func last {n : Nat} {A : \Type} (xs : Vec (suc n) A) : A \elim n, xs
+  | zero, :: x _ => x
+  | suc n, :: _ xs => last xs
+
+\func init {n : Nat} {A : \Type} (xs : Vec (suc n) A) : Vec n A \elim n, xs
+  | zero, :: _ _ => nil
+  | suc n, :: x xs => x :: init xs
+
+\func map {n : Nat} {A B : \Type} (f : A -> B) (xs : Vec n A) : Vec n B \elim n, xs
+  | zero, nil => nil
+  | suc n, :: x xs => f x :: map f xs
+
+-- `reverse` is the first function where you just can't get away without proving some arithmetic properties of the
+-- natural numbers and doing some coercions
+\func reverse {n : Nat} {A : \Type} (xs : Vec n A) : Vec n A =>
+  Vec.coe-length NatSemiring.+-comm (reverse-append xs nil)
+    \where {
+      \func lemma {m n : Nat} : suc m + n = suc (m + n) => NatSemiring.+-comm *> pmap suc NatSemiring.+-comm
+
+      \func reverse-append {n : Nat} {A : \Type} (xs : Vec n A) {m : Nat} (rest : Vec m A) : Vec (m + n) A \elim n, xs
+        | zero, nil => rest
+        | suc n, :: x xs => Vec.coe-length lemma (reverse-append xs (x :: rest))
+    }
+
+\func intersperse {n : Nat} {A : \Type} (x : A) (ys : Vec (suc n) A) : Vec (suc (n + n)) A \elim n, ys
+  | zero, :: y _ => y :: nil
+  | suc n, :: y ys => y :: x :: Vec.coe-length NatSemiring.+-comm (intersperse x ys)
+
+\func \infixr 10 ** (m n : Nat) : Nat \elim n
+  | zero => 1
+  | suc n => m * m ** n
+
+-- the result type can be refined in various ways
+\func subsequences {n : Nat} {A : \Type} (xs : Vec n A) : Vec (2 ** n) (List A) \elim n, xs
+  | zero, nil => List.nil :: nil
+  | suc n, :: x xs => \let xss => subsequences xs \in Vec.coe-length lemma (xss ++ map (List.:: x) xss)
+  \where {
+    \func lemma {n : Nat} : n + n = 2 * n
+      | {0} => idp
+      | {suc n} => pmap suc NatSemiring.+-comm *> pmap (\lam k => suc (suc k)) lemma
+  }
+
+
+\func foldl {n : Nat} {A B : \Type} (f : B -> A -> B) (y : B) (xs : Vec n A) : B \elim n, xs
+  | zero, _ => y
+  | suc n, :: x xs => foldl f (y `f` x) xs
+
+\func foldl1 {n : Nat} {A : \Type} (f : A -> A -> A) (xs : Vec (suc n) A) : A \elim n, xs
+  | zero, :: x _ => x
+  | suc n, :: x xs => foldl1 f xs `f` x
+
+\func foldr {n : Nat} {A B : \Type} (f : A -> B -> B) (xs : Vec n A) (y : B) : B \elim n, xs
+  | zero, _ => y
+  | suc n, :: x xs => x `f` foldr f xs y
+
+\func foldr1 {n : Nat} {A : \Type} (f : A -> A -> A) (xs : Vec (suc n) A) : A \elim n, xs
+  | zero, :: x _ => x
+  | suc n, :: x xs => x `f` foldr1 f xs
+
+\func min (m n : Nat) : Nat
+  | zero, _ => 0
+  | suc _, zero => 0
+  | suc m, suc n => suc (min m n)
+
+\func replicate {A : \Type} (n : Nat) (x : A) : Vec n A \elim n
+  | zero => nil
+  | suc n => x :: replicate n x
+
+\func take {n : Nat} {A : \Type} (k : Nat) (xs : Vec n A) : Vec (min n k) A
+  | {zero}, _, nil => nil
+  | {suc n}, zero, _ => nil
+  | {suc n}, suc k, :: x xs => x :: take k xs
+
+\func drop {n : Nat} {A : \Type} (k : Nat) (xs : Vec n A) : Vec (n -' k) A
+  | {zero}, _, nil => nil
+  | {suc n}, zero, xs => xs
+  | {suc n}, suc k, :: x xs => drop k xs
+
+-- the result length can't be predicted, but we know it must be shorter than the original
+\func takeWhile {n : Nat} {A : \Type} (p : A -> Bool) (xs : Vec n A) : (\Sigma (k : Nat) (k <= n) (Vec k A)) \elim n, xs
+  | zero, _ => (0, zero<=_, nil)
+  -- Arend: if you try to write this with `if` in place of `\case`, you get type errors.  VERY STRANGE!
+  | suc n, :: x xs => \case p x \with {
+    | true =>
+      \let (k, k<=n, xs') => takeWhile p xs
+      \in (suc k, suc<=suc k<=n, x :: xs')
+    | false => (0, zero<=_, nil)
+  }
+
+\func dropWhile {n : Nat} {A : \Type} (p : A -> Bool) (xs : Vec n A) : (\Sigma (k : Nat) (k <= n) (Vec k A)) \elim n, xs
+  | zero, _ => (0, zero<=_, nil)
+  | suc n, :: x xs =>
+    \let (k, k<=n, xs') => dropWhile p xs \in \case p x \with {
+      | true => (k, k<=n NatLE.`<=-transitive` <=-suc, xs')
+      | false => (suc k, suc<=suc k<=n, x :: xs')
+    }
+
+
+\func \infix 9 !! {n : Nat} {A : \Type} (xs : Vec n A) (i : Fin n) : A
+  | {suc n}, :: x _, fzero => x
+  | {suc n}, :: _ xs, fsuc i => xs !! i
+
+\data Maybe (A : \Type)
+  | Nothing
+  | Just A
+
+\func findWithIndex {n : Nat} {A : \Type} (p : A -> Bool) (xs : Vec n A) : Maybe (\Sigma (Fin n) A) \elim n, xs
+  | zero, _ => Nothing
+  | suc n, :: x xs => \case p x \with {
+    | true => Just (fzero, x)
+    | false => \let i' => findWithIndex p xs \in \case i' \with {
+      | Nothing => Nothing
+      | Just (i, x) => Just (fsuc i, x)
+    }
+  }
+
+\func findWithIndices {n : Nat} {A : \Type} (p : A -> Bool) (xs : Vec n A) :
+    \Sigma (k : Nat) (k <= n) (Vec k (\Sigma (Fin n) A)) \elim n, xs
+  | zero, _ => (0, zero<=_, nil)
+  | suc n, :: x xs =>
+    \let | (k, k<=n, is') => findWithIndices p xs
+         | is => map (\lam ix => \case ix \with { | (i, x) => (fsuc i, x) }) is'
+    \in \case p x \with {
+      | true => (suc k, suc<=suc k<=n, (fzero, x) :: is)
+      | false => (k, k<=n NatLE.`<=-transitive` <=-suc, is)
+    }
+
+
+\func zipWith {m n : Nat} {A B C : \Type} (f : A -> B -> C) (xs : Vec m A) (ys : Vec n B) : Vec (min m n) C \elim m, n, xs, ys
+  | zero, _, _, _ => nil
+  | suc m, zero, _, _ => nil
+  | suc m, suc n, :: x xs, :: y ys => f x y :: zipWith f xs ys
