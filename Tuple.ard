@@ -1,0 +1,11 @@
+\import Set.Fin
+\import Vec
+
+\data Tuple {n : Nat} (ts : Vec n \Type) \elim n, ts
+  | zero, _ => empty
+  | suc n, :: t ts => \infixr 5 # t (Tuple ts)
+
+-- Tuple.!! would be a better name, but we can't access !! in the global scope within such a declaration
+\func \infix 9 t!! {n : Nat} {ts : Vec n \Type} (xs : Tuple ts) (i : Fin n) : ts !! i
+  | {suc n}, {:: t _}, # x _, fzero => x
+  | {suc n}, {:: _ ts}, # _ xs, fsuc i => xs t!! i
