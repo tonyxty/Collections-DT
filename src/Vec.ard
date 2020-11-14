@@ -87,21 +87,66 @@
   }
 
 
-\func foldl {n : Nat} {A B : \Type} (f : B -> A -> B) (y : B) (xs : Vec n A) : B \elim n, xs
+\func foldl {A B : \Type} (f : B -> A -> B) (y : B) {n : Nat} (xs : Vec n A) : B \elim n, xs
   | zero, _ => y
   | suc n, :: x xs => foldl f (y `f` x) xs
 
-\func foldl1 {n : Nat} {A : \Type} (f : A -> A -> A) (xs : Vec (suc n) A) : A \elim n, xs
+\func foldl1 {A : \Type} (f : A -> A -> A) {n : Nat} (xs : Vec (suc n) A) : A \elim n, xs
   | zero, :: x _ => x
   | suc n, :: x xs => foldl1 f xs `f` x
 
-\func foldr {n : Nat} {A B : \Type} (f : A -> B -> B) (xs : Vec n A) (y : B) : B \elim n, xs
+\func foldr {A B : \Type} (f : A -> B -> B) {n : Nat} (xs : Vec n A) (y : B) : B \elim n, xs
   | zero, _ => y
   | suc n, :: x xs => x `f` foldr f xs y
 
-\func foldr1 {n : Nat} {A : \Type} (f : A -> A -> A) (xs : Vec (suc n) A) : A \elim n, xs
+\func foldr1 {A : \Type} (f : A -> A -> A) {n : Nat} (xs : Vec (suc n) A) : A \elim n, xs
   | zero, :: x _ => x
   | suc n, :: x xs => x `f` foldr1 f xs
+
+-- Vec of Vecs indexed by lengths
+\data VecsWithLength {n : Nat} (ls : Vec n Nat) (A : \Type) \elim n, ls
+  | zero, _ => nill
+  | suc n, :: l ls => \infixr 5 ::: (Vec l A) (VecsWithLength ls A)
+
+\func foldlWithLength {A : \Type} (B : Nat -> \Type)
+                      (flen : Nat -> Nat -> Nat) (f : \Pi {m n : Nat} -> B m -> Vec n A -> B (flen m n))
+                      {n0 : Nat} (y : B n0) {n : Nat} {ls : Vec n Nat} (xs : VecsWithLength ls A)
+  : B (foldl flen n0 ls)
+\elim n, ls, xs
+  | zero, _, _ => y
+  | suc n, :: l ls, ::: x xs => foldlWithLength B flen f (y `f` x) xs
+
+\func foldl1WithLength {A : \Type}
+                       (flen : Nat -> Nat -> Nat) (f : \Pi {m n : Nat} -> Vec m A -> Vec n A -> Vec (flen m n) A)
+                       {n : Nat} {ls : Vec (suc n) Nat} (xs : VecsWithLength ls A)
+  : Vec (foldl1 flen ls) A
+\elim n, ls, xs
+  | zero, :: l _, ::: x _ => x
+  | suc n, :: l ls, ::: x xs => foldl1WithLength flen f xs `f` x
+
+\func foldrWithLength {A : \Type} (B : Nat -> \Type)
+                      (flen : Nat -> Nat -> Nat) (f : \Pi {m n : Nat} -> Vec m A -> B n -> B (flen m n))
+                      {n0 : Nat} (y : B n0) {n : Nat} {ls : Vec n Nat} (xs : VecsWithLength ls A)
+  : B (foldr flen ls n0)
+\elim n, ls, xs
+  | zero, _, _ => y
+  | suc n, :: l ls, ::: x xs => x `f` foldrWithLength B flen f y xs
+
+\func foldr1WithLength {A : \Type}
+                       (flen : Nat -> Nat -> Nat) (f : \Pi {m n : Nat} -> Vec m A -> Vec n A -> Vec (flen m n) A)
+                       {n : Nat} {ls : Vec (suc n) Nat} (xs : VecsWithLength ls A)
+  : Vec (foldr1 flen ls) A
+\elim n, ls, xs
+  | zero, :: l _, ::: x _ => x
+  | suc n, :: l ls, ::: x xs => x `f` foldr1WithLength flen f xs
+
+
+\func flip {A B C : \Type} (f : A -> B -> C) : B -> A -> C => \lam b a => f a b
+
+\func concat {n : Nat} {ls : Vec n Nat} {A : \Type} (xs : VecsWithLength ls A) : Vec (foldr (flip (+)) ls 0) A =>
+  -- Arend: I think there is something not right about Arend's handling of implicit parameters
+  foldrWithLength (Vec __ A) (flip (+)) (\lam {_} {_} => ++) nil xs
+
 
 \func min (m n : Nat) : Nat
   | zero, _ => 0
