@@ -1,0 +1,12 @@
+\import Logic
+\import Paths
+
+\data Maybe (A : \Type)
+  | just A
+  | none
+
+\func unwrap {A : \Type} (x : Maybe A) (notNone : Not (x = none)) : A =>
+  \case \elim x, idpe x \with {
+    | just x, _ => x
+    | none, p => notNone p
+  }
