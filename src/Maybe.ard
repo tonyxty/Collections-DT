@@ -1,12 +1,20 @@
+\import Data.List
 \import Logic
 \import Paths
 
 \data Maybe (A : \Type)
   | just A
   | none
-
-\func unwrap {A : \Type} (x : Maybe A) (notNone : Not (x = none)) : A =>
-  \case \elim x, \elim notNone \with {
-    | just x, _ => x
-    | none, notNone => absurd (notNone idp)
+  \where {
+    \use \coerce toList {A : \Type} (x : Maybe A) : List A \elim x
+      | just x => x :: nil
+      | none => nil
   }
+
+\func unwrap {A : \Type} (x : Maybe A) (notNone : Not (x = none)) : A \elim x
+  | just x => x
+  | none => absurd (notNone idp)
+
+\func unwrap-or-default {A : \Type} (x : Maybe A) (default : A) : A \elim x
+  | just x => x
+  | none => default
