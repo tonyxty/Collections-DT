@@ -1,0 +1,38 @@
+\import Equiv
+\import Paths
+\import Vec
+
+\func Array (n : Nat) (A : \Type) : \Type => Fin n -> A
+\where {
+  \func nil {A : \Type} (i : Fin zero) : A \elim i
+
+  \func \infixr 5 :: {n : Nat} {A : \Type} (x : A) (a : Array n A) (i : Fin (suc n)) : A \elim i
+    | zero => x
+    | suc i => a i
+}
+
+\func toVec {n : Nat} {A : \Type} (a : Array n A) : Vec n A \elim n
+  | zero => nil
+  | suc n => (a zero) :: toVec (\lam i => a (suc i))
+
+\func fromVec {n : Nat} {A : \Type} (xs : Vec n A) : Array n A \elim n, xs
+  | zero, nil => Array.nil
+  | suc n, :: x xs => x Array.:: (fromVec xs)
+
+\func fromToVec {n : Nat} {A : \Type} (a : Array n A) : fromVec (toVec a) = a =>
+  path (\lam i k => (lemma a k) @ i)
+  \where {
+    \func lemma {n : Nat} {A : \Type} (a : Array n A) (i : Fin n) : fromVec (toVec a) i = a i \elim n, i
+      | suc n, zero => idp
+      | suc n, suc i => lemma (\lam k => a (suc k)) i
+  }
+
+\func toFromVec {n : Nat} {A : \Type} (xs : Vec n A) : toVec (fromVec xs) = xs \elim n, xs
+  | zero, nil => idp
+  | suc n, :: a xs => pmap (a :: __) (toFromVec xs)
+
+\func ArrayVecEquiv (n : Nat) (A : \Type) : QEquiv {Array n A} {Vec n A} \cowith
+  | f => toVec {n} {A}
+  | ret => fromVec {n} {A}
+  | ret_f => fromToVec {n} {A}
+  | f_sec => toFromVec {n} {A}
