@@ -6,7 +6,7 @@
   | none
 
 \func unwrap {A : \Type} (x : Maybe A) (notNone : Not (x = none)) : A =>
-  \case \elim x, idpe x \with {
+  \case \elim x, \elim notNone \with {
     | just x, _ => x
-    | none, p => notNone p
+    | none, notNone => absurd (notNone idp)
   }
