@@ -59,18 +59,16 @@
 -- `reverse` is the first function where you just can't get away without proving some arithmetic properties of the
 -- natural numbers and doing some coercions
 \func reverse {n : Nat} {A : \Type} (xs : Vec n A) : Vec n A =>
-  Vec.coe-length NatSemiring.+-comm (reverse-append xs nil)
+  reverse-append xs nil
     \where {
-      \func lemma {m n : Nat} : suc m + n = suc (m + n) => NatSemiring.+-comm *> pmap suc NatSemiring.+-comm
-
       \func reverse-append {n : Nat} {A : \Type} (xs : Vec n A) {m : Nat} (rest : Vec m A) : Vec (m + n) A \elim n, xs
         | zero, nil => rest
-        | suc n, :: x xs => Vec.coe-length lemma (reverse-append xs (x :: rest))
+        | suc n, :: x xs => reverse-append xs (x :: rest)
     }
 
 \func intersperse {n : Nat} {A : \Type} (x : A) (ys : Vec (suc n) A) : Vec (suc (n + n)) A \elim n, ys
   | zero, :: y _ => y :: nil
-  | suc n, :: y ys => y :: x :: Vec.coe-length NatSemiring.+-comm (intersperse x ys)
+  | suc n, :: y ys => y :: x :: intersperse x ys
 
 \func \infixr 10 ** (m n : Nat) : Nat \elim n
   | zero => 1
@@ -83,7 +81,7 @@
   \where {
     \func lemma {n : Nat} : n + n = 2 * n
       | {0} => idp
-      | {suc n} => pmap suc NatSemiring.+-comm *> pmap (\lam k => suc (suc k)) lemma
+      | {suc n} => pmap (\lam k => suc (suc k)) lemma
   }
 
 
