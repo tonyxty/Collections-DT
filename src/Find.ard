@@ -1,0 +1,24 @@
+\import Data.List
+\import Data.Or
+\import Logic
+\import Set
+
+\data NotFound {A : \Type} (P : A -> \Prop) (xs : List A) \elim xs
+  | List.nil => nil
+  | List.:: x xs => \infixr 5 :: (Not (P x)) (NotFound P xs)
+
+\data Found {A : \Type} (P : A -> \Prop) (xs : List A) \elim xs
+  | List.:: x xs => {
+    | here (P x)
+    | there (Found P xs)
+  }
+
+\func find {A : \Type} (P : A -> Decide) (xs : List A) : Found (\lam x => (P x)) xs `Or` NotFound (\lam x => (P x)) xs \elim xs
+  | List.nil => inr nil
+  | List.:: x xs => \case decide {P x} \with {
+    | yes y => inl (here y)
+    | no n => \case find P xs \with {
+      | inl y => inl (there y)
+      | inr n' => inr (n :: n')
+    }
+  }
