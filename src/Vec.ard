@@ -1,6 +1,7 @@
 \import Arith.Nat
 \import Data.Bool
 \import Data.List
+\import Maybe
 \import Order.Lattice
 \import Paths
 \import Set.Fin
@@ -189,17 +190,14 @@
   | {suc n}, :: x _, fzero => x
   | {suc n}, :: _ xs, fsuc i => xs !! i
 
-\data Maybe (A : \Type)
-  | Nothing
-  | Just A
 
 \func findWithIndex {n : Nat} {A : \Type} (p : A -> Bool) (xs : Vec n A) : Maybe (\Sigma (Fin n) A) \elim n, xs
-  | zero, _ => Nothing
+  | zero, _ => none
   | suc n, :: x xs => \case p x \with {
-    | true => Just (fzero, x)
+    | true => just (fzero, x)
     | false => \let i' => findWithIndex p xs \in \case i' \with {
-      | Nothing => Nothing
-      | Just (i, x) => Just (fsuc i, x)
+      | none => none
+      | just (i, x) => just (fsuc i, x)
     }
   }
 
