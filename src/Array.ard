@@ -31,8 +31,5 @@
   | zero, nil => idp
   | suc n, :: a xs => pmap (a :: __) (toFromVec xs)
 
-\func ArrayVecEquiv (n : Nat) (A : \Type) : QEquiv {Array n A} {Vec n A} \cowith
-  | f => toVec {n} {A}
-  | ret => fromVec {n} {A}
-  | ret_f => fromToVec {n} {A}
-  | f_sec => toFromVec {n} {A}
+\func Array=Vec (n : Nat) : Array = Vec =>
+  path (\lam i n A => iso (toVec {n} {A}) fromVec fromToVec toFromVec i)
