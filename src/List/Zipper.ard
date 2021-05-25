@@ -1,0 +1,35 @@
+\import Data.List
+\import Maybe
+
+-- A zipper of lists, with "focus" on the head of `after`
+\record Zipper (A : \Type) {
+  | before : List A
+  | after : List A
+  \func next : Maybe (Zipper A) => \case after \with {
+    | nil => none
+    | :: x xs => just (Zipper.new (x :: before) xs)
+  }
+  \func prev : Maybe (Zipper A) => \case before \with {
+    | nil => none
+    | :: x xs => just (Zipper.new xs (x :: after))
+  }
+  \func put (x : A) : Zipper A \cowith
+    | before => before
+    | after => x :: after
+  \func toList : List A => helper before after
+  \where {
+    \func helper {A : \Type} (before after : List A) : List A \elim before
+      | nil => after
+      | :: x xs => helper xs (x :: after)
+  }
+  \func reverse : Zipper A \cowith
+    | before => after
+    | after => before
+} \where {
+  \func new {A : \Type} (before after : List A) : Zipper A \cowith
+    | before => before
+    | after => after
+  \func fromList {A : \Type} (xs : List A) : Zipper A \cowith
+    | before => nil
+    | after => xs
+}
