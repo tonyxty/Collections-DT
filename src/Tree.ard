@@ -1,0 +1,5 @@
+\import Data.List
+
+\data Tree (A : \Type)
+  | leaf A
+  | node (List (Tree A))

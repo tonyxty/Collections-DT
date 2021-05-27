@@ -1,0 +1,50 @@
+\import Data.List
+\import Maybe
+\import Tree
+
+\record Step (A : \Type) {
+  | parent : Tree A
+  | before : List (Tree A)
+  | after : List (Tree A)
+} \where {
+  \func new {A : \Type} (parent : Tree A) (before after : List (Tree A)) : Step A \cowith
+    | parent => parent
+    | before => before
+    | after => after
+}
+
+\record Zipper (A : \Type) {
+  | current : Tree A
+  | steps : List (Step A)
+
+  \func nextSibling : Maybe (Zipper A) => \case steps \with {
+    | nil => none
+    | :: s ss => \let s : Step A => s \in \case s.after \with {
+      | nil => none
+      | :: t after => just (Zipper.new t (Step.new s.parent (current :: s.before) after :: ss))
+    }
+  }
+  \func prevSibling : Maybe (Zipper A) => \case steps \with {
+    | nil => none
+    | :: s ss => \let s : Step A => s \in \case s.before \with {
+      | nil => none
+      | :: t before => just (Zipper.new t (Step.new s.parent before (current :: s.after) :: ss))
+    }
+  }
+  \func firstChild : Maybe (Zipper A) => \case current \with {
+    | leaf _ => none
+    | node nil => none
+    | node (:: t ts) => just (Zipper.new t (Step.new current nil ts :: steps))
+  }
+  \func parent : Maybe (Zipper A) => \case steps \with {
+    | nil => none
+    | :: s ss => \let s : Step A => s \in just (Zipper.new s.parent ss)
+  }
+} \where {
+  \func new {A : \Type} (current : Tree A) (steps : List (Step A)) : Zipper A \cowith
+    | current => current
+    | steps => steps
+  \func fromTree {A : \Type} (tree : Tree A) : Zipper A \cowith
+    | current => tree
+    | steps => nil
+}
