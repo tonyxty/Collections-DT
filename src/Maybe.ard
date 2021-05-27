@@ -18,3 +18,7 @@
 \func unwrap-or-default {A : \Type} (x : Maybe A) (default : A) : A \elim x
   | just x => x
   | none => default
+
+\func \infix 1 >>= {A B : \Type} (x : Maybe A) (f : A -> Maybe B) : Maybe B \elim x
+  | just x => f x
+  | none => none
