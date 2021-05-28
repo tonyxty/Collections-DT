@@ -2,4 +2,4 @@
 
 \data Tree (A : \Type)
   | leaf A
-  | node (List (Tree A))
+  | node A (List (Tree A))
