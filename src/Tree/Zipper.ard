@@ -2,13 +2,18 @@
 \import Maybe
 \import Tree
 
+\func rev-++ {A : \Type} (xs ys : List A) : List A \elim xs
+  | nil => ys
+  | :: x xs => rev-++ xs (x :: ys)
+
 \record Step (A : \Type) {
-  | parent : Tree A
+  | data : A
   | before : List (Tree A)
   | after : List (Tree A)
+  \func toTree (t : Tree A) : Tree A => node data (rev-++ before (t :: after))
 } \where {
-  \func new {A : \Type} (parent : Tree A) (before after : List (Tree A)) : Step A \cowith
-    | parent => parent
+  \func new {A : \Type} (data : A) (before after : List (Tree A)) : Step A \cowith
+    | data => data
     | before => before
     | after => after
 }
@@ -17,53 +22,54 @@
   | current : Tree A
   | steps : List (Step A)
 
-  \func nextSibling : Maybe (Zipper A) => \case steps \with {
+  \func with {B : \Type} (f : Step A -> List (Step A) -> Maybe B) : Maybe B => \case steps \with {
     | nil => none
-    | :: s ss => \let s : Step A => s \in \case s.after \with {
-      | nil => none
-      | :: t after => just (Zipper.new t (Step.new s.parent (current :: s.before) after :: ss))
-    }
+    | :: s ss => f s ss
   }
-  \func prevSibling : Maybe (Zipper A) => \case steps \with {
-    | nil => none
-    | :: s ss => \let s : Step A => s \in \case s.before \with {
-      | nil => none
-      | :: t before => just (Zipper.new t (Step.new s.parent before (current :: s.after) :: ss))
-    }
+
+  \func toTree : Tree A => helper steps current
+  \where {
+    \func helper (steps : List (Step A)) (t : Tree A) : Tree A \elim steps
+      | nil => t
+      | :: (s : Step A) ss => helper ss (s.toTree t)
   }
+
+  \func nextSibling : Maybe (Zipper A) => with (\lam (s : Step A) ss =>
+    \case s.after \with {
+      | nil => none
+      | :: t after => just (Zipper.new t (Step.new s.data (current :: s.before) after :: ss))
+    }
+  )
+  \func prevSibling : Maybe (Zipper A) => with (\lam (s : Step A) ss =>
+    \case s.before \with {
+      | nil => none
+      | :: t before => just (Zipper.new t (Step.new s.data before (current :: s.after) :: ss))
+    }
+  )
   \func firstChild : Maybe (Zipper A) => \case current \with {
     | leaf _ => none
     | node _ nil => none
-    | node _ (:: t ts) => just (Zipper.new t (Step.new current nil ts :: steps))
+    | node x (:: t ts) => just (Zipper.new t (Step.new x nil ts :: steps))
   }
-  \func parent : Maybe (Zipper A) => \case steps \with {
-    | nil => none
-    | :: s ss => \let s : Step A => s \in just (Zipper.new s.parent ss)
-  }
-  \func insertBefore (t : Tree A) : Maybe (Zipper A) => \case steps \with {
-    | nil => none
-    | :: (s : Step A) ss => just (Zipper.new t (Step.new s.parent s.before (current :: s.after) :: ss))
-  }
-  \func insertAfter (t : Tree A) : Maybe (Zipper A) => \case steps \with {
-    | nil => none
-    | :: (s : Step A) ss => just (Zipper.new t (Step.new s.parent (current :: s.before) s.after :: ss))
-  }
+  \func parent : Maybe (Zipper A) => with (\lam (s : Step A) ss => just (Zipper.new (s.toTree current) ss))
+  \func insertBefore (t : Tree A) : Maybe (Zipper A) => with (\lam (s : Step A) ss =>
+    just (Zipper.new t (Step.new s.data s.before (current :: s.after) :: ss))
+  )
+  \func insertAfter (t : Tree A) : Maybe (Zipper A) => with (\lam (s : Step A) ss =>
+    just (Zipper.new t (Step.new s.data (current :: s.before) s.after :: ss))
+  )
   \func put (t : Tree A) : Zipper A \cowith
     | current => t
     | steps => steps
-  \func remove : Maybe (Zipper A) => \case steps \with {
-    | nil => none -- Trees are nonempty, so removing the entire tree is not allowed
-    | :: (s : Step A) ss => \case s.after \with {
+  \func remove : Maybe (Zipper A) => with (\lam (s : Step A) ss =>
+    \case s.after \with {
       | nil => \case s.before \with {
-        | nil => \case s.parent \with {
-          | leaf x => none
-          | node x _ => just (Zipper.new (leaf x) ss)
-        }
-        | :: t before => just (Zipper.new t (Step.new s.parent before s.after :: ss))
+        | nil => just (Zipper.new (leaf s.data) ss)
+        | :: t before => just (Zipper.new t (Step.new s.data before s.after :: ss))
       }
-      | :: t after => just (Zipper.new t (Step.new s.parent s.before after :: ss))
+      | :: t after => just (Zipper.new t (Step.new s.data s.before after :: ss))
     }
-  }
+  )
 } \where {
   \func new {A : \Type} (current : Tree A) (steps : List (Step A)) : Zipper A \cowith
     | current => current
