@@ -47,7 +47,6 @@
     }
   )
   \func firstChild : Maybe (Zipper A) => \case current \with {
-    | leaf _ => none
     | node _ nil => none
     | node x (:: t ts) => just (Zipper.new t (Step.new x nil ts :: steps))
   }
@@ -64,7 +63,7 @@
   \func remove : Maybe (Zipper A) => with (\lam (s : Step A) ss =>
     \case s.after \with {
       | nil => \case s.before \with {
-        | nil => just (Zipper.new (leaf s.data) ss)
+        | nil => just (Zipper.new (node s.data nil) ss)
         | :: t before => just (Zipper.new t (Step.new s.data before s.after :: ss))
       }
       | :: t after => just (Zipper.new t (Step.new s.data s.before after :: ss))
